@@ -346,8 +346,11 @@ outparams output = {0};
 
     //float H = (s.phi - (M_PI/180) * c.j_obs) / (2*M_PI);
     float H = s.phi/(2*M_PI); // effectively setting j_obs to 0, don't see why it should matter here...
-    H -= floor(H);
-    H *=c.n_phi;
+    //so H is basically what fraction of the way around phi is 
+
+    H -= floor(H); //then we subtract off any bit that goes over 1, effectively making it wrap around 2pi
+
+    H *=c.n_phi; //now multiply by how many grid cells in phi we have, which gives our grid value in phi
     int k = H, K = k == c.n_phi-1 ? 0 : k+1;
     H -= k;
 
@@ -621,69 +624,83 @@ int main(void)
     printf("%s", "output from load_coord:\n");
     c.coord = load_coord(coordname);
     
-    //printf("%s", "values of c.n's after running load_coord:\n");
-    //printf("%zu, %zu, %zu\n", c.n_r, c.n_phi, c.n_theta);
- 
-    //printf("%s\n", "values of a_spin and Gamma after coord load");
-    //printf("%f, %f\n", c.a_spin, c.Gamma);
-    
-
     printf("%s", "output from load_field:\n");
     c.field = load_field(fieldname);
  
-    State instate = {0};
-    {
-      instate.r = 2.0; // these will be set by grid i, j indices
-      instate.theta = .8;
-      instate.phi = 0.0; //setting the phi value
-    } 
+
+    // so we want to modify this so that we specify what x,y,z we want, convert this to r,theta, phi, and then save into array given by x-y-z
+
     
-    char outfile[] = "CSV_out/test_out.txt";
+    char outfile[] = "CSV_out/3D_test_out.txt";
     FILE *fp;
     fp = fopen(outfile, "w");
     
 
 
-    int array_size = 512.0;
+    // just make it small to begin with since we'll be saving a 3d array
+    int array_size = 100.0;
     float max = 100.0; //in 2GM/c^2
     float grid_spacing = max / array_size;
-      
- 
-    float outarray[array_size][array_size];//defining the output array
-    fprintf(fp, "%s", "i , j , x , z , b , ne , te , ur , uphi , beta \n");
-    for(int i=0; i < array_size; i++)
+
+
+//initializing instate, the values of which we will modify at every grid point to interpolate the spherical polar coords to rectangular 3d grid
+State instate = {0};
+    {
+      instate.r = 0; 
+      instate.theta = 0;
+      instate.phi = 0; 
+    } 
+   
+   float outarray[array_size][array_size][array_size];
+   
+   //first line has info on physical length of grid
+   fprintf(fp, "%s", "physical length of grid (which is cubic): ");
+   fprintf(fp, "%f", max);
+   fprintf(fp, "%s", "\n");
+
+   //second line has info on size of array
+
+   fprintf(fp, "%s", "size of one side of array: ");
+   fprintf(fp, "%d", array_size);
+   fprintf(fp, "%s", "\n");
+
+
+
+
+   fprintf(fp, "%s", "i , j , k,  b , ne , te \n");
+    for(int i=0; i< array_size; i++)
+    {
+      float x = i*grid_spacing - max/2.;
+      for(int j=0; j<array_size; j++)
       {
-	for(int j=0; j<array_size; j++)
-	  {
-	    
-	    float sine = i/(sqrt(j*j + i*i));
-	    float theta = asin(sine);
-	    float radius = grid_spacing * sqrt(j*j + i*i);
-	    instate.r = radius;
-	    instate.theta = theta;
-	    outparams out = transform(instate);
-	    float x = i * grid_spacing;
-	    float z = j * grid_spacing;
-	    if(radius<1.3)//zeroing out grid spaces within event horizon
+        float y = j*grid_spacing - max/2.;
+        for (int k=0; k<array_size; k++)
+        {
+          float z = k*grid_spacing - max/2.;
+          // so now we have the x,y,z that we want to find our values at.  Now we convert this to r theta phi for the instate
+          float radius = sqrt(x*x+y*y+z*z);
+          float phi = 2*atan(y/x);
+          // make phi go from 0 to 2pi?
+          //phi += M_PI;
+
+          float theta = acos(z/radius);
+
+          instate.r = radius;
+          instate.theta=theta;
+          instate.phi=phi;
+
+          outparams out = transform(instate);
+          if(radius<1)//zeroing out grid spaces within event horizon
 	      {
-		out.b = 0;
-		out.ne = 0;
-		out.te = 0;
-		out.beta = 0;
-		out.br = 0;
-		out.btheta = 0;
-		out.bphi = 0;
+		        out.b = 0;
+		        out.ne = 0;
+		        out.te = 0;
 	      }
-	    
-			  
-	   
 
-	    fprintf(fp, "%d , %d , %f , %f , %f , %f , %f , %f , %f , %f \n", i, j, x, z, out.b, out.ne, out.te, out.ur, out.uphi, out.beta);
-			   
-	  }
+         fprintf(fp, "%d , %d , %d , %f , %f , %f \n", i, j, k, out.b, out.ne,out.te);
+        }
       }
- 
-
+    }
     fclose(fp);
 
   return 0;
