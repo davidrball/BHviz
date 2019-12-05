@@ -639,7 +639,7 @@ int main(void)
 
     // just make it small to begin with since we'll be saving a 3d array
     int array_size = 100.0;
-    float max = 100.0; //in 2GM/c^2
+    float max = 50.0; //in 2GM/c^2
     float grid_spacing = max / array_size;
 
 
@@ -680,9 +680,13 @@ State instate = {0};
           // so now we have the x,y,z that we want to find our values at.  Now we convert this to r theta phi for the instate
           float radius = sqrt(x*x+y*y+z*z);
           float phi = 2*atan(y/x);
-          // make phi go from 0 to 2pi?
-          //phi += M_PI;
 
+          // make phi go from 0 to 2pi?
+          //phi += M_PI; //no, this messes everything up
+          //I think this isn't quite working, our accretion flow is exactly rotationally symmetric through a change in phi of pi
+          //but moving on for now for viz purposes
+
+  
           float theta = acos(z/radius);
 
           instate.r = radius;

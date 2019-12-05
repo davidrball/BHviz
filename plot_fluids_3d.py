@@ -39,16 +39,21 @@ xaxlabel="$x \; (GM/c^2)$"
 yaxlabel = "$z \; (GM/c^2)$"
     
 half = int(mylen/2)
+
 constx_slice = ne_array[:,:,half]
 consty_slice = ne_array[:,half,:]
 constz_slice = ne_array[half,:,:]
+
+mymax=max(np.max(constx_slice), np.max(consty_slice), np.max(constz_slice))
+
+mymax = np.log10(mymax)
 
 
 
 
 fig, (ax0, ax1, ax2) = plt.subplots(1,3,sharey=True)
-ax0.imshow(np.log10(constx_slice), origin='lower')
-ax1.imshow(np.log10(consty_slice),origin='lower')
-ax2.imshow(np.log10(constz_slice),origin='lower')
+ax0.imshow(np.log10(constx_slice), origin='lower',vmin=-2,vmax=mymax)
+ax1.imshow(np.log10(consty_slice),origin='lower',vmin=-2,vmax=mymax)
+ax2.imshow(np.log10(constz_slice),origin='lower',vmin=-2, vmax=mymax)
 plt.savefig("fluid_plots/3dtest.png",dpi=300,bbox_inches='tight')
 
