@@ -1,21 +1,7 @@
+#functions for processing the mhd data that we've written to a csv file
+
+
 import numpy
-
-#here we are going to write functions that will take MHD data, generate the files we need as inputs to unity
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def split_dens(dens, x, y, z, deltax, deltay, deltaz):

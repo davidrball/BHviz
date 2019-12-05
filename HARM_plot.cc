@@ -1,4 +1,4 @@
-#include "gray_for_plotting/src/gray.h"
+#include "gray.h"
 #include <cstdlib>
 #include <cmath>
 #include <stdio.h>
@@ -7,7 +7,6 @@
 #define DT_DUMP (-64)
 #define N_R     264 // large enough to hold our grids
 #define N_RS    8   // number of cells to skip near the outer boundary
-#define N_NU    30
 #define SINGLE 1  //i've turned everything into floats so this is unimportant
 #define EPSILON 1e-32
 #define CONST_c 2.9979e10
@@ -23,20 +22,7 @@ typedef struct {
   float kr, ktheta;
   float bimpact;   // impact parameter defined as L / E, constant
   float padding;
-  float I  [N_NU]; // specific intensity
-  float tau[N_NU]; // optical depth
 } State; 
-
-
-typedef struct {
-  float j0;
-  float j1;
-  float j2;
-  float j3;
-  
-
-}current_density;
-//we don't really need I, tau, bimpact, etc. but oh well
 
 
 typedef struct {
@@ -53,25 +39,7 @@ typedef struct {
   float dxdxp[4][4];
 } Coord;
 
-//defining the maxwell tensor
-typedef struct {
-  float F00;
-  float F01;
-  float F02;
-  float F03;
-  float F10;
-  float F11;
-  float F12;
-  float F13;
-  float F20;
-  float F21;
-  float F22;
-  float F23;
-  float F30;
-  float F31;
-  float F32;
-  float F33;
-} max_tens;
+
 
 
 //the output structure of our transformation
@@ -82,10 +50,8 @@ typedef struct {
   float ur;
   float uphi;
   float beta;
-  max_tens Max_Tens;
   float sum1, sum2; //relevent info of christoffel's necessary for calculation of j
-  //float I_thermal[N_NU];
-  //float I_nonthermal[N_NU];
+
 
 } outparams;
 
@@ -118,8 +84,6 @@ typedef struct {
 
   // Parameters for radiative transfer
   float   m_BH, ne_rho, threshold, tgas_max, Ti_Te_d, Ti_Te_f;
-  float   nu0[N_NU];
-  size_t n_nu;
 
   Coord *coord;
   Field *field;
@@ -149,11 +113,13 @@ Field* load_field(char name[]);
 
 outparams transform(State s);
 
-current_density j_calc(State s);
-
 //Coord *harm::load_coord(Const &c, const char *name)
 Coord*  load_coord(char name[])
 {
+
+  printf("%s", "testing print in load_coord");
+ 
+ 
   FILE *file = fopen(name, "r");
   if(!file)
     printf("%s", "error, fail to open file");
@@ -170,6 +136,8 @@ Coord*  load_coord(char name[])
   c.n_r = n_r;
   c.n_theta = n_theta;
   c.n_phi = n_phi;
+
+  printf("%s", "loaded grid dimensions");
 
   c.n_rx = c.n_r - N_RS - 1; // use power-law extrapolation for r > c.r[c.n_rx]
   count  = c.n_r * c.n_theta;
@@ -670,82 +638,6 @@ outparams d = {0}; //define this null state to return for a cell if tgas is too 
     te = ti_te < 0 ? -ti_te : tgas * CONST_mp_me / (ti_te+1);
   } 
 
-  //components of maxwell tensor, denoted by FXY
-  float F00, F01, F02, F03, F10, F11, F12, F13, F20, F21, F22, F23, F30, F31, F32, F33;
-  float Er, Ephi, Etheta;
-  //using sign convention from carroll
-  {
-    //calculating -u x B need to put in correct units
-    Er = (bphi*utheta-btheta*uphi);
-    Ephi = (ur*btheta-br*utheta);
-    Etheta = (uphi*br-bphi*ur);
-
-    //components on the diagonal are 0
-    F00 = 0;
-    F11 = 0;
-    F22 = 0;
-    F33 = 0;
-
-    //E field components of Fmv in Gauss*unitless velocity (need to multiply by c)
-    F10 = -Er;
-    F20 = -Ephi;
-    F30 = -Etheta;
-    F01 = -F10;
-    F02 = -F20;
-    F03 = -F30;
-
-    //multiplying by c to get correct units, then other factors to turn to cgs
-    //just multiplying by c gives it in microvolts/m, divide by 1e6 to get into volts/m, then to 
-    //cgs by 299.8 V per statvolt and 1m to 100 cm
-    F10 = F10*CONST_c/(1.0e6 * 299.8 * 100) ;
-    F20 = F20*CONST_c/(1.0e6 * 299.8 * 100) ;
-    F30 = F30*CONST_c/(1.0e6 * 299.8 * 100);
-    F01 = F01*CONST_c/(1.0e6 * 299.8 * 100);
-    F02 = F02*CONST_c/(1.0e6 * 299.8 * 100) ;
-    F03 = F03*CONST_c/(1.0e6 * 299.8 * 100) ;
-    //B field components in Gauss
-    F12 = btheta;
-    F13 = -bphi;
-    F23 = br;
-    F21 = -F12;
-    F31 = -F13;
-    F32 = -F23;
-    
-    //outputting the maxwell tensor components
-    output.Max_Tens.F00 = F00;
-    output.Max_Tens.F11 = F11;
-    output.Max_Tens.F22 = F22;
-    output.Max_Tens.F33 = F33;
-    output.Max_Tens.F10 = F10;
-    output.Max_Tens.F20 = F20;
-    output.Max_Tens.F30 = F30;
-    output.Max_Tens.F01 = F01;
-    output.Max_Tens.F02 = F02;
-    output.Max_Tens.F03 = F03;
-    output.Max_Tens.F12 = F12;
-    output.Max_Tens.F13 = F13;
-    output.Max_Tens.F23 = F23;
-    output.Max_Tens.F21 = F21;
-    output.Max_Tens.F31 = F31;
-    output.Max_Tens.F32 = F32;
-  }
-
-  //Let's take j0 first so we don't need to calculate time derivatives
-  //we need to be able to access r+, r-, phi+, phi-, theta+, and theta-
-  //this is basically just the divergence of the E field plus christoffel terms
-
-  //divergence of E in spherical coords:
-  //1/r^2 * d(r^2 Er)/dr + 1/rsin(theta) * d(EthetaSin(theta))/dtheta + (1/rsin(theta))*dEphi/dphi
-
-  //need to define r+, r-, theta+, theta- phi+, and phi-, for a naming convention, let's call them
-  //rup, rdown, thetaup, thetadown, phiup, and phidown
-  //basically just going to need to copy over all the code that extracts b and u info from the harm data,
-  //and redo it with new stuff in place of s.r
-  //can we do this calculation after transform instead of in it?  would be easier that way.
-  //let's look into that.
-  //or try making loop in the function that does it three times, generates 3 sets of values, e.g.
-  //brminus, br, brplus
-
 
 
 
@@ -764,105 +656,12 @@ outparams d = {0}; //define this null state to return for a cell if tgas is too 
 
 //maybe write a new function that does this and takes state as an input rather than doing it within the transform function
 
-//just for testing having it return a float so we can check the j0r component
-current_density j_calc(State s)
-
-{
-  current_density current_out = {0};
-  float deltar = .05; //for now, r is logarithmically spaced so it's a bit tricky
-  //to decide on best deltar (I think)
-  float deltaphi = 2 * M_PI / 64.0; //64 grid points in phi
-  float deltatheta = M_PI/128; //128 grid poitns in theta 
-  //defining the r+ and r- states, as well as angles +/-
-  State state_r_plus = s;
-  State state_r_minus = s;
-
-  State state_theta_plus = s;
-  State state_theta_minus = s;
-  
-  State state_phi_plus = s;
-  State state_phi_minus = s;
-
-  state_r_plus.r += deltar;
-  state_r_minus.r -= deltar;
-  
-  state_theta_plus.theta += deltatheta;
-  state_theta_minus.theta -= deltatheta;
-
-  state_phi_plus.phi += deltaphi;
-  state_phi_minus.phi -= deltaphi;
-  
-  //transforming 
-  outparams r_out = transform(s);
-  outparams r_plus_out = transform(state_r_plus);
-  outparams r_minus_out = transform(state_r_minus);
-
-  outparams theta_plus_out = transform(state_theta_plus);
-  outparams theta_minus_out = transform(state_theta_minus);
-
-  outparams phi_plus_out = transform(state_phi_plus);
-  outparams phi_minus_out = transform(state_phi_minus);
-
-  //need to turn our r's from gravitational units to cm
-  float conv_factor = 5.91e11; //cm per GM/c^2
-  r_out.r *= conv_factor;
-  r_plus_out.r *=  conv_factor;
-  r_minus_out.r *= conv_factor;
-
-  //calculating j0 in pieces, sum of three components associated with r, theta, and phi, doing r first
-  float sum1 = r_out.sum1;
-  float sum2 = r_out.sum2;
-
-  sum1 /= conv_factor;//christoffels must have units 1/r, so 
-  sum2 /= conv_factor;
-
-  //need to put units back into christoffel connections, must be units 1/r? so multiply by c^2 / GM?
-
-  float j0r;
-  j0r = (1/(r_out.r*r_out.r))*(r_plus_out.r * r_plus_out.r * r_plus_out.Max_Tens.F01 - r_minus_out.r * r_minus_out.r * r_minus_out.Max_Tens.F01)/(2*deltar);
-
-  float j0theta;
-  j0theta = (1/(r_out.r * sinf(r_out.theta))) * (theta_plus_out.Max_Tens.F02 * sinf(theta_plus_out.theta) - theta_minus_out.Max_Tens.F02 * sinf(theta_minus_out.theta))/(2*deltatheta); 
-  float j0phi;
-  j0phi =  (phi_plus_out.Max_Tens.F02 - phi_minus_out.Max_Tens.F02)/(r_out.r * sinf(r_out.theta) * 2*deltaphi); 
-  float j0 = j0r + j0theta + j0phi + r_out.sum1*r_out.Max_Tens.F01 + r_out.sum2*r_out.Max_Tens.F02;//last two terms are christoffel connections
- 
-
-  //now let's calculate j1 (w/o christoffels), ignoring the displacement current:
-  float j1, j2, j3;
-
-  j1 = (1/(r_out.r * sinf(r_out.theta))) * ((theta_plus_out.Max_Tens.F12 * sinf(theta_plus_out.theta) - theta_minus_out.Max_Tens.F12 * sinf(theta_minus_out.theta))/(2*deltatheta) - (phi_plus_out.Max_Tens.F31 - phi_minus_out.Max_Tens.F31)/(2*deltaphi));
-
-  j1+= sum1*r_out.Max_Tens.F11 + sum2*r_out.Max_Tens.F12; //christoffel connections
-
-  j2 = (1/r_out.r)*((phi_plus_out.Max_Tens.F23 - phi_minus_out.Max_Tens.F23)/(2*deltaphi*sinf(r_out.theta)) - (r_plus_out.r * r_plus_out.Max_Tens.F12 - r_minus_out.r * r_minus_out.Max_Tens.F12)/(2*deltar));
-
-  j2 += sum1*r_out.Max_Tens.F21 + sum2*r_out.Max_Tens.F22;
-  
-  j3 = (1/r_out.r) * ((r_plus_out.r * r_plus_out.Max_Tens.F31 - r_minus_out.r * r_minus_out.Max_Tens.F31)/(2*deltar) - (theta_plus_out.Max_Tens.F23 - theta_minus_out.Max_Tens.F23)/(2*deltatheta));
-
-  j3 += sum1*r_out.Max_Tens.F31 + sum2*r_out.Max_Tens.F32;
-
-  current_out.j0 = j0;
-  current_out.j1 = j1;
-  current_out.j2 = j2;
-  current_out.j3 = j3;
-
-  return current_out;
-
-
-
-  
-
-
-}
-
 int main(void)
 {
-  //let's define our constants necessary for using load_coord and load_field:
+  //let's define our constants necessary for using img and load_field:
   //note that these are part of a GLOBAL structure
 {
-  c.imgsz     = 64;
+  //c.imgsz     = 64;
   c.imgx0     = 0;
   c.imgy0     = 0;
   c.r_obs     = 1024;
@@ -878,14 +677,13 @@ int main(void)
   c.tgas_max  = 1;
   c.Ti_Te_d   = 3;
   c.Ti_Te_f   = 3;
-  c.n_nu      = 0;
   c.coord = NULL;
   c.field = NULL;
 }
   
-  char fieldname[] = "../../gcenter-data/a9SANE/fieldline3590.bin";
+  char fieldname[] = "testdata/fieldline3590.bin";
     
-  char coordname[] = "../../gcenter-data/a9SANE/usgdump2d";
+  char coordname[] = "testdata/usgdump2d";
   
 
  
@@ -910,22 +708,7 @@ int main(void)
       instate.phi = 0.0; //setting the phi value
     } 
     
-
-    //just for testing some things:
-
-printf("%s", "F01, F02, F03, F12, F13, F23\n");
-    printf("%f, %f, %f, %f, %f, %f",transform(instate).Max_Tens.F01, transform(instate).Max_Tens.F02, transform(instate).Max_Tens.F03, transform(instate).Max_Tens.F12, transform(instate).Max_Tens.F13, transform(instate).Max_Tens.F23);
-    printf("%s", "\n");
-
-
-     printf("%s", "the components of the current density, j0, j1, j2, j3 are::\n");
-     printf("%f, %f, %f, %f", j_calc(instate).j0, j_calc(instate).j1, j_calc(instate).j2, j_calc(instate).j3);
-    printf("%s", "\n");
-    printf("%s", "the magnitude of the 3-current density is:\n");
-    printf("%f",  sqrt(j_calc(instate).j1*j_calc(instate).j1 +  j_calc(instate).j2*j_calc(instate).j2 + j_calc(instate).j3*j_calc(instate).j3));
-    printf("%s", "\n");
-
-    char outfile[] = "HARMout_with_current_flare.txt";
+    char outfile[] = "CSV_out/test_out.txt";
     FILE *fp;
     fp = fopen(outfile, "w");
     
@@ -935,7 +718,7 @@ printf("%s", "F01, F02, F03, F12, F13, F23\n");
       
  
     float outarray[array_size][array_size];//defining the output array
-    fprintf(fp, "%s", "i , j , x , z , b , ne , te , ur , uphi , beta , j0 , j1 , j2 , j3 \n");
+    fprintf(fp, "%s", "i , j , x , z , b , ne , te , ur , uphi , beta \n");
     for(int i=0; i < array_size; i++)
       {
 	for(int j=0; j<array_size; j++)
@@ -947,12 +730,6 @@ printf("%s", "F01, F02, F03, F12, F13, F23\n");
 	    instate.r = radius;
 	    instate.theta = theta;
 	    outparams out = transform(instate);
-	    current_density my_current = j_calc(instate);
-	    float j0 = my_current.j0;
-	    float j1 = my_current.j1;
-	    float j2 = my_current.j2;
-	    float j3 = my_current.j3;
-	      
 	    float x = i * grid_spacing;
 	    float z = j * grid_spacing;
 	    if(radius<1.3)//zeroing out grid spaces within event horizon
@@ -964,16 +741,12 @@ printf("%s", "F01, F02, F03, F12, F13, F23\n");
 		out.br = 0;
 		out.btheta = 0;
 		out.bphi = 0;
-		j0 = 0;
-		j1 = 0;
-		j2 = 0;
-		j3 = 0;
 	      }
 	    
 			  
 	   
 
-	    fprintf(fp, "%d , %d , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f \n", i, j, x, z, out.b, out.ne, out.te, out.ur, out.uphi, out.beta, j0, j1, j2, j3);
+	    fprintf(fp, "%d , %d , %f , %f , %f , %f , %f , %f , %f , %f \n", i, j, x, z, out.b, out.ne, out.te, out.ur, out.uphi, out.beta);
 			   
 	  }
       }
