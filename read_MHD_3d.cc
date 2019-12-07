@@ -106,10 +106,6 @@ outparams transform(State s);
 //Coord *harm::load_coord(Const &c, const char *name)
 Coord*  load_coord(char name[])
 {
-
-  printf("%s", "testing print in load_coord");
- 
- 
   FILE *file = fopen(name, "r");
   if(!file)
     printf("%s", "error, fail to open file");
@@ -121,12 +117,15 @@ Coord*  load_coord(char name[])
   if(fread(&n_r,     sizeof(size_t), 1, file) != 1 ||
      fread(&n_theta, sizeof(size_t), 1, file) != 1 ||
      fread(&n_phi,   sizeof(size_t), 1, file) != 1)
-    printf("%s", "Error: fail to read grid dimensions\n");
+    printf("%s", "Error:  grid dimensions\n");
 
 //fill global structure w/ grid info
   c.n_r = n_r;
   c.n_theta = n_theta;
   c.n_phi = n_phi;
+  
+  //hardwire c.n_theta because for some reason it isn't working on windows machine
+  //c.n_theta=64;
 
   printf("%s", "loaded grid dimensions");
 
