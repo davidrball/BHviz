@@ -49,16 +49,26 @@ xaxlabel="$x \; (GM/c^2)$"
 zaxlabel = "$z \; (GM/c^2)$"
 yaxlabel="$y \; (GM/c^2)$"
 half = int(mylen/2.)
-constx_slice = ne_array[:,:,half]
-consty_slice = ne_array[:,half,:]
-constz_slice = ne_array[half,:,:]
+constx_slice = te_array[:,:,half]
+consty_slice = te_array[:,half,:]
+constz_slice = te_array[half,:,:]
 mymax=max(np.max(constx_slice), np.max(consty_slice), np.max(constz_slice))
 
 mymax = np.log10(mymax)
+
 fig, (ax0, ax1, ax2) = plt.subplots(1,3,sharey=True)
-ax0.imshow(np.log10(constx_slice), origin='lower',vmin=-2,vmax=mymax,extent=extent_list)
-ax1.imshow(np.log10(consty_slice),origin='lower',vmin=-2,vmax=mymax,extent=extent_list)
-ax2.imshow(np.log10(constz_slice),origin='lower',vmin=-2, vmax=mymax,extent=extent_list)
+im0=ax0.imshow(np.log10(constx_slice), origin='lower',extent=extent_list)
+im1=ax1.imshow(np.log10(consty_slice),origin='lower',extent=extent_list)
+im2=ax2.imshow(np.log10(constz_slice),origin='lower',extent=extent_list)
 #ax0.set_xlabel(xaxlabel)
-plt.savefig("fluid_plots/3dtest.png",dpi=300,bbox_inches='tight')
+fig.colorbar(im0)
+plt.savefig("fluid_plots/tmp_3dtest.png",dpi=300,bbox_inches='tight')
+#fig.close()
+plt.close()
+
+te_array = np.nan_to_num(te_array)
+flatarr = te_array.flatten()
+plt.hist(flatarr,bins=100)
+plt.yscale('log')
+plt.savefig('fluid_plots/tmp_hist.png')
 

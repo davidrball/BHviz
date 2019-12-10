@@ -9,6 +9,12 @@ def split_dens(nparr_path,sparse_fac=1.):
     #load relevant files
     ne = np.load(ne_path)
     te = np.load(te_path)
+    te=np.nan_to_num(te)
+    print('max, min, avg of temp are : {}, {}, {}'.format(np.max(te), np.min(te), np.mean(te)))
+    #there are some pretty ridiculous numerical artifacst yielding very large values of te
+    #let's just apply some upper and lower bounds
+
+    
     params = np.load(params_path)
     totdens=np.sum(ne)
     print('sum of density is {}'.format(totdens))
@@ -21,13 +27,15 @@ def split_dens(nparr_path,sparse_fac=1.):
     #coord_arr = np.linspace(xmin,xmax,arr_len)
     #print(coord_arr)
 
-    filepath = "prtl_csv/test_prtls_sparse{}.csv".format(sparse_fac)
+    filepath = "prtl_csv/limlogtest_prtls_sparse{}.csv".format(sparse_fac)
     fp = open(filepath,'w')
 
     ne =ne*sparse_fac
     print(np.max(ne))
     fp.write("x,y,z,temperature\n")
     totprts = 0
+    avgtmp = np.sum(te)
+    med_tmp = np.median(te)
     for i in range(arr_len):
         x=i*deltax - phys_size/2.
         for j in range(arr_len):
@@ -36,6 +44,12 @@ def split_dens(nparr_path,sparse_fac=1.):
                 z=k*deltax - phys_size/2. 
                 dens=ne[k][j][i]
                 temp = te[k][j][i] #maybe turn this into maxwellian to draw particle energies
+                if temp<3:
+                    temp=np.log10(10)
+                elif temp > 30:
+                    temp=np.log10(20)
+                else:
+                    temp=np.log10(temp)
                 numprts=dens
                 numprts=math.floor(numprts)
                 leftover=dens-numprts
@@ -55,7 +69,7 @@ def split_dens(nparr_path,sparse_fac=1.):
     print('wrote {} particles'.format(totprts))
     return 0
 
-split_dens("np_arr_data/test_",.3)
+split_dens("np_arr_data/test_",.4)
                 
 
 
@@ -68,9 +82,3 @@ split_dens("np_arr_data/test_",.3)
 
 tmppath = "np_arr_data/test_"
 
-#split_dens(tmppath)
-
-def sparsify(prtlist, delete_frac):
-    #takes particle list and removes delete_frac of them
-
-    return 0 
