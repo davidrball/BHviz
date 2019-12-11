@@ -630,7 +630,7 @@ int main(void)
     // so we want to modify this so that we specify what x,y,z we want, convert this to r,theta, phi, and then save into array given by x-y-z
 
     
-    char outfile[] = "CSV_out/3D_test_out.txt";
+    char outfile[] = "CSV_out/3D_arr100_M50_nospace.txt";
     FILE *fp;
     fp = fopen(outfile, "w");
     
@@ -666,7 +666,7 @@ State instate = {0};
 
 
 
-   fprintf(fp, "%s", "i , j , k,  b , ne , te \n");
+   fprintf(fp, "%s", "i,j,k,b,ne,te\n");
     for(int i=0; i< array_size; i++)
     {
       float x = i*grid_spacing - max/2.;
@@ -700,7 +700,7 @@ State instate = {0};
 		        out.te = 0;
 	      }
 
-         fprintf(fp, "%d , %d , %d , %f , %f , %f \n", i, j, k, out.b, out.ne,out.te);
+         fprintf(fp, "%d,%d,%d,%f,%f,%f\n", i, j, k, out.b, out.ne,out.te);
         }
       }
     }
