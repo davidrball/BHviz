@@ -57,7 +57,7 @@ for i in range(mylen):
             ne=ne_array[k][j][i]
             te=te_array[k][j][i]
             b=b_array[k][j][i]
-            fp.write("{},{},{},{0:d},{0:d},{0:d}\n".format(i,j,k,b,ne,te))
+            fp.write("{},{},{},{},{},{}\n".format(i,j,k,b,ne,te))
 fp.close()
 
 

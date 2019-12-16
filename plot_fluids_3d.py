@@ -7,7 +7,7 @@ plt.rcParams['font.family'] = 'STIXGeneral'
 #first check for existence of saved numpy arrays
 pathext = "arr50_M200"
 
-file_path = "np_arr_data/"+pathext+"_"
+file_path = "np_arr_dataasdf/"+pathext+"_"
 
 try:
     ne_array=np.load(file_path+"ne.npy")
@@ -22,11 +22,12 @@ try:
     te_array=np.clip(te_array,tlow,tup)
 except:
     print('loading from CSV')
-    fp = open("CSV_out/3D_arr50_M200.txt" , "r")
-    phys_size = float(fp.readline().split(": ")[1][:-3]) #get physical info on first line
-    print(phys_size)
-    mylen = int(fp.readline().split(": ")[1])
-    print(mylen)
+    fp = open("CSV_out/3D_arr50_M50_nohead_nonan.csv" , "r")
+    #phys_size = float(fp.readline().split(": ")[1][:-3]) #get physical info on first line
+    #print(phys_size)
+    #mylen = int(fp.readline().split(": ")[1])
+    #print(mylen)
+    mylen=50
     b_array = np.zeros((mylen,mylen,mylen))
     ne_array = np.zeros((mylen,mylen,mylen))
     te_array = np.zeros((mylen,mylen,mylen))
@@ -35,7 +36,7 @@ except:
     params_array[1]=mylen
     fp.readline()
     for line in fp.readlines():
-        strline = line.split(" , ")
+        strline = line.split(",")
         i = int(strline[0])
         j = int(strline[1])
         k = int(strline[2])
@@ -44,27 +45,27 @@ except:
         te = float(strline[5])
         b_array[j][i] += b 
     #print(b)
-        if ne > 0:
+        if True:
             ne_array[k][j][i] += ne
         te_array[k][j][i] += te 
     
     
     #clean up the data a bit
-    ne_array = np.nan_to_num(ne_array)
-    te_array = np.nan_to_num(te_array)
-    b_array = np.nan_to_num(b_array)
+    #ne_array = np.nan_to_num(ne_array)
+    #te_array = np.nan_to_num(te_array)
+    #b_array = np.nan_to_num(b_array)
     
     tup=100
     tlow=0
-    te_array = np.clip(te_array,tlow,tup)
+    #te_array = np.clip(te_array,tlow,tup)
     
     
     
     
-    np.save(file_path+"ne.npy",ne_array)
-    np.save(file_path+"te.npy",te_array)
-    np.save(file_path+"b.npy",b_array)
-    np.save(file_path+"params.npy",params_array)
+    #np.save(file_path+"ne.npy",ne_array)
+    #np.save(file_path+"te.npy",te_array)
+    #np.save(file_path+"b.npy",b_array)
+    #np.save(file_path+"params.npy",params_array)
     fp.close()
 
 
