@@ -53,11 +53,13 @@ for i in range(mylen):
                 myx=1e-16
             phi = np.arctan(myy/myx)
             
-            bx_array[k][j][i] = np.sin(phi)
-            by_array[k][j][i] = -np.cos(phi)
-            bz_array[k][j][i] = .7
+            #bx_array[k][j][i] = np.sin(phi)
+            #by_array[k][j][i] = -np.cos(phi)
+            #bz_array[k][j][i] = 0
+            bx_array[k][j][i] = -1
+            by_array[k][j][i] = 1
+            bz_array[j][k][i] = .45
 '''
-
 
 
 def randseed(seednum):
@@ -66,10 +68,10 @@ def randseed(seednum):
         tmpseed_arr = np.round(50*np.random.rand(3))
         seedlist.append(tmpseed_arr)
     return seedlist
-seedlist = randseed(seednum)
+#seedlist = randseed(seednum)
 
 
-def orderedseed(seednum):
+def orderedseed(seednum): #not currently working, may want to implement this though
     seedlist = []
     myrange = np.arange(0,50,seednum)
     for i in range(seednum):
@@ -77,23 +79,21 @@ def orderedseed(seednum):
     return seedlist        
 
 
-#seedlist=[[30,30,25],[25,25,30],[25,40,25]]
-seedlist = randseed(20)
-#seedlist = orderedseed(2)
-
-
 def trilin_interpolate(myarray, myx, myy, myz):
-    x0 = np.floor(myx)
-    x1 = np.ceil(myx)
-    y0 = np.floor(myy)
-    y1 = np.ceil(myy)
-    z0 = np.floor(myz)
-    z1 = np.ceil(myz)
+    
+    x0 = int(np.floor(myx))
+    x1 = x0+1
+    y0 = int(np.floor(myy))
+    y1 = y0+1
+    z0 = int(np.floor(myz))
+    z1 = z0+1
             
     #now define fractional coordinate
+    
+    #print(myx,x1, x0)
     xd = (myx-x0)/(x1-x0)
     yd = (myy-y0)/(y1-y0)
-    zd = (myz-zd)/(z1-z0)
+    zd = (myz-z0)/(z1-z0)
     
     #interpolating along x
             
@@ -110,8 +110,8 @@ def trilin_interpolate(myarray, myx, myy, myz):
             
     c00 = c000*(1-xd)+c100*xd
     c01 = c001*(1-xd)+c101*xd
-    c10 = c010(1-xd)+c110*xd
-    c11 = c011(1-xd)+c111*xd
+    c10 = c010*(1-xd)+c110*xd
+    c11 = c011*(1-xd)+c111*xd
             
     #interpolate long y
     c0 = c00*(1-yd) + c10*yd
@@ -121,7 +121,7 @@ def trilin_interpolate(myarray, myx, myy, myz):
     c=c0*(1-zd) + c1*zd #this is our value of b at the interpolated point!
     return c
 
-def write_fieldlines(seedlist,filepath):
+def return_fieldlines(seedlist,filepath):
     tot_xlist = []
     tot_ylist = []
     tot_zlist = []
@@ -137,8 +137,8 @@ def write_fieldlines(seedlist,filepath):
         
         tcount =0
         
-        boundary_stop = x<mylen and y<mylen and z<mylen and x>=0 and y>=0 and z>=0
-        while (boundary_stop and tcount <=1000): 
+        boundary_stop = x<mylen-1 and y<mylen-1 and z<mylen-1 and x>=0 and y>=0 and z>=0
+        while (boundary_stop and tcount <=100000): 
             xlist.append(x)
             ylist.append(y)
             zlist.append(z)
@@ -159,6 +159,8 @@ def write_fieldlines(seedlist,filepath):
             
             
             #normalize b to a meaning value in terms of steps
+            
+            
             btot = np.sqrt(bx**2 + by**2 + bz**2)
             #print(btot)
             if np.abs(btot)>0:
@@ -169,13 +171,14 @@ def write_fieldlines(seedlist,filepath):
             
             else: #break if we hit this weird spot
                 break
+            
+            
             #update xyz positions
             
             #x+=int(np.round(bx))
             #y+=int(np.round(by))
             #z+=int(np.round(bz))
             
-            #eventually we should put in a trilinear interpolation to update the positions so that they don't need to be precisely at grid poitns
             x+=bx
             y+=by
             z+=bz
@@ -183,7 +186,7 @@ def write_fieldlines(seedlist,filepath):
             tcount +=1
             
         #update stopping criteria
-            boundary_stop = x<mylen and y<mylen and z<mylen and x>=0 and y>=0 and z>=0
+            boundary_stop = x<mylen-1 and y<mylen-1 and z<mylen-1 and x>=0 and y>=0 and z>=0
         tot_xlist.append(xlist)
         tot_ylist.append(ylist)
         tot_zlist.append(zlist)
@@ -193,18 +196,44 @@ def write_fieldlines(seedlist,filepath):
         
     return tot_xlist, tot_ylist, tot_zlist
 
-xlist, ylist, zlist = write_fieldlines(seedlist,'tmp')  
 
+def write_fieldlines(out_directory,xlist,ylist,zlist):
+    #xlist,ylist,zlist are a list of lists, the sublists are individual coordinates of a specific fieldline
+    numflds = len(xlist)
+    #for each fieldline, write individual file
+    for i in range(numflds):
+        #open file associated with this fieldline
+        filename = out_directory+"fieldline"+"%03d"%i+".csv"
+        fp = open(filename,'w')
+        myx = xlist[i]
+        myy = xlist[i]
+        myz = zlist[i]
+        for j in range(len(myx)):
+            fp.write('{},{},{}\n'.format(myx[j],myy[j],myz[j]))
+            
+        fp.close()
+    
+    
+seedlist = randseed(5)
+
+xlist, ylist, zlist = return_fieldlines(seedlist,'tmp')  
+
+write_fieldlines("blines_csv/fieldlines/test/",xlist,ylist,zlist)
+
+
+
+
+'''
 fig = plt.figure()
 ax = fig.add_subplot(111,projection='3d')
-ax.view_init(45,45)
+ax.view_init(0,0)
 c_list = ["Red","Blue","Orange","Green","Magenta","Yellow","Cyan"]
 for i in range(len(xlist)):
     ax.plot(xlist[i],ylist[i],zlist[i])
     #plt.savefig('prtl_plots/prtl_{}_test.png'.format(sparse))
-plt.xlim(0,50)
-plt.ylim(0,50)
+#plt.xlim(0,50)
+#plt.ylim(0,50)
 plt.show()
-
+'''
 
 
