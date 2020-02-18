@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 
 testfilename = "3D_arr50_M50_nohead_nonan.csv"
 
-def CSV_to_datacube(filename,densclip_low,densclip_high):
+#output 0 corresponds to dens, 1 to te, and 2 to b
+def CSV_to_datacube(filename,densclip_low,densclip_high,output):
     print('loading from CSV '+filename)
     fp = open("CSV_out/"+filename , "r")
     #phys_size = float(fp.readline().split(": ")[1][:-3]) #get physical info on first line
@@ -50,17 +51,30 @@ def CSV_to_datacube(filename,densclip_low,densclip_high):
     #now take log
     
     ne_array = np.nan_to_num(np.log10(ne_array))
-
+    te_array = np.nan_to_num(np.log10(te_array))
+    b_array = np.nan_to_num(np.log10(b_array))
 
     #artifically clip array to reasonable values
     
-    ne_array = np.clip(ne_array,densclip_low,densclip_high)
-    
-    print(np.min(ne_array))
-    print(np.max(ne_array))
+    if output==0:
+        input_arr = ne_array
+    elif output==1:
+        input_arr = te_array
+    elif output==2:
+        input_arr = b_array
 
-    mymin = np.min(ne_array)
-    mymax = np.max(ne_array)    
+
+    #if both are 0, don't clip
+    if densclip_low==0 and densclip_high==0:
+        out_array = input_arr
+    else:
+        out_array = np.clip(input_arr,densclip_low,densclip_high)
+    
+    print(np.min(out_array))
+    print(np.max(out_array))
+
+    mymin = np.min(out_array)
+    mymax = np.max(out_array)    
     
     
     scaled_array = (ne_array-mymin)/(mymax-mymin)
@@ -68,8 +82,15 @@ def CSV_to_datacube(filename,densclip_low,densclip_high):
     return scaled_array
 
 
-datacube = CSV_to_datacube(testfilename,-1.5,1)
+denslow,denshigh = -1.5,1
+datacube_dens = CSV_to_datacube(testfilename,denslow,denshigh,0)
 
+templow,temphigh=0,2
+datacube_temp = CSV_to_datacube(testfilename,templow,temphigh,1)
+
+blow=-3
+bhigh=0
+datacube_b=CSV_to_datacube(testfilename,blow,bhigh,2)
 
 
 
@@ -87,4 +108,7 @@ def tofile(cube_norm,name='binary_out_test',format=8,T=(3,2,1)): #working
     print("writing " + filename)
     cube_fmt.transpose(T[0]-1,T[1]-1,T[2]-1).tofile(filename)
 
-tofile(datacube)
+
+tofile(datacube_dens,name="dens_binary")
+tofile(datacube_temp,name="temp_binary")
+tofile(datacube_temp,name="b_binary")
